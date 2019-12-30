@@ -17,9 +17,9 @@ function CharSplitLMMinibatchLoader.create(data_dir, batch_size, seq_length, spl
 
     -- fetch file attributes to determine if we need to rerun preprocessing
     local run_prepro = false
-    if not (path.exists(vocab_file) or path.exists(tensor_file)) then
+    if not (path.exists(vocab_file) and path.exists(tensor_file)) then
         -- prepro files do not exist, generate them
-        print('vocab.t7 and data.t7 do not exist. Running preprocessing...')
+        print('vocab.t7 or data.t7 do not exist. Running preprocessing...')
         run_prepro = true
     else
         -- check if the input file was modified since last time we 
@@ -132,8 +132,6 @@ function CharSplitLMMinibatchLoader.text_to_tensor(in_textfile, out_vocabfile, o
     local tot_len = 0
     local f = assert(io.open(in_textfile, "r"))
 
-    -- create vocabulary if it doesn't exist yet
-    print('creating vocabulary mapping...')
     -- record all characters to a set
     local unordered = {}
     rawdata = f:read(cache_len)
@@ -145,15 +143,26 @@ function CharSplitLMMinibatchLoader.text_to_tensor(in_textfile, out_vocabfile, o
         rawdata = f:read(cache_len)
     until not rawdata
     f:close()
-    -- sort into a table (i.e. keys become 1..N)
-    local ordered = {}
-    for char in pairs(unordered) do ordered[#ordered + 1] = char end
-    table.sort(ordered)
-    -- invert `ordered` to create the char->int mapping
-    local vocab_mapping = {}
-    for i, char in ipairs(ordered) do
-        vocab_mapping[char] = i
+
+    -- create vocabulary if it doesn't exist yet
+    local has_vocabulary = false
+    if path.exists(out_vocabfile) then
+        print('vocab.t7 found! Reading file...')
+        vocab_mapping = torch.load(out_vocabfile)
+	has_vocabulary = true
+    else
+        print('creating vocabulary mapping...')
+        -- sort into a table (i.e. keys become 1..N)
+        local ordered = {}
+        for char in pairs(unordered) do ordered[#ordered + 1] = char end
+        table.sort(ordered)
+        -- invert `ordered` to create the char->int mapping
+        local vocab_mapping = {}
+        for i, char in ipairs(ordered) do
+            vocab_mapping[char] = i
+        end
     end
+
     -- construct a tensor with all the data
     print('putting data into tensor...')
     local data = torch.ByteTensor(tot_len) -- store it into 1D first, then rearrange
@@ -170,8 +179,10 @@ function CharSplitLMMinibatchLoader.text_to_tensor(in_textfile, out_vocabfile, o
     f:close()
 
     -- save output preprocessed files
-    print('saving ' .. out_vocabfile)
-    torch.save(out_vocabfile, vocab_mapping)
+    if not has_vocabulary then
+        print('saving ' .. out_vocabfile)
+        torch.save(out_vocabfile, vocab_mapping)
+    end
     print('saving ' .. out_tensorfile)
     torch.save(out_tensorfile, data)
 end
