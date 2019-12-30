@@ -117,6 +117,7 @@ if not path.exists(opt.checkpoint_dir) then lfs.mkdir(opt.checkpoint_dir) end
 
 -- define the model: prototypes for one timestep, then clone them in time
 local do_random_init = true
+local iteration_index = 1
 if string.len(opt.init_from) > 0 then
     print('loading a model from checkpoint ' .. opt.init_from)
     local checkpoint = torch.load(opt.init_from)
@@ -140,6 +141,8 @@ if string.len(opt.init_from) > 0 then
     opt.rnn_size = checkpoint.opt.rnn_size
     opt.num_layers = checkpoint.opt.num_layers
     opt.model = checkpoint.opt.model
+    loader.batch_ix = checkpoint.batch_ix
+    iteration_index = checkpoint.i
     do_random_init = false
 else
     print('creating an ' .. opt.model .. ' with ' .. opt.num_layers .. ' layers')
@@ -231,6 +234,7 @@ function eval_split(split_index, max_batches)
     for i = 1,n do -- iterate over batches in the split
         -- fetch a batch
         local x, y = loader:next_batch(split_index)
+        print(x)
         x,y = prepro(x,y)
         -- forward pass
         for t=1,opt.seq_length do
@@ -307,7 +311,7 @@ local optim_state = {learningRate = opt.learning_rate, alpha = opt.decay_rate}
 local iterations = opt.max_epochs * loader.ntrain
 local iterations_per_epoch = loader.ntrain
 local loss0 = nil
-for i = 1, iterations do
+for i = iteration_index, iterations do
     local epoch = i / loader.ntrain
 
     local timer = torch.Timer()
@@ -351,6 +355,7 @@ for i = 1, iterations do
         checkpoint.i = i
         checkpoint.epoch = epoch
         checkpoint.vocab = loader.vocab_mapping
+        checkpoint.batch_ix = loader.batch_ix
         torch.save(savefile, checkpoint)
     end
 
