@@ -15,7 +15,7 @@ cmd:text('Options')
 cmd:argument('-model','model to load')
 cmd:option('-gpuid',0,'gpu to use')
 cmd:option('-opencl',0,'use OpenCL (instead of CUDA)')
-cmd:option('-set_train_batch_ix',-1,'Manually set train batch index')
+cmd:option('-set_train_ix',0,'Auto set train index from i')
 cmd:text()
 
 -- parse input params
@@ -42,8 +42,8 @@ print(model.opt)
 print('val losses:')
 print(model.val_losses)
 
-if opt.set_train_batch_ix >= 0 then
-    model.batch_ix = {opt.set_train_batch_ix,0,0}
+if opt.set_train_ix > 0 then
+    model.batch_ix = {model.i,0,0}
     torch.save(opt.model, model)
     print("Set model training batch_ix to " .. model.batch_ix[1])
 end
