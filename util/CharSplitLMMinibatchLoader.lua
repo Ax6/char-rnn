@@ -146,10 +146,11 @@ function CharSplitLMMinibatchLoader.text_to_tensor(in_textfile, out_vocabfile, o
 
     -- create vocabulary if it doesn't exist yet
     local has_vocabulary = false
+    local vocab_mapping = {}
     if path.exists(out_vocabfile) then
         print('vocab.t7 found! Reading file...')
         vocab_mapping = torch.load(out_vocabfile)
-	has_vocabulary = true
+	    has_vocabulary = true
     else
         print('creating vocabulary mapping...')
         -- sort into a table (i.e. keys become 1..N)
@@ -157,7 +158,7 @@ function CharSplitLMMinibatchLoader.text_to_tensor(in_textfile, out_vocabfile, o
         for char in pairs(unordered) do ordered[#ordered + 1] = char end
         table.sort(ordered)
         -- invert `ordered` to create the char->int mapping
-        local vocab_mapping = {}
+        vocab_mapping = {}
         for i, char in ipairs(ordered) do
             vocab_mapping[char] = i
         end
