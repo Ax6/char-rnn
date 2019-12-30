@@ -234,7 +234,6 @@ function eval_split(split_index, max_batches)
     for i = 1,n do -- iterate over batches in the split
         -- fetch a batch
         local x, y = loader:next_batch(split_index)
-        print(x)
         x,y = prepro(x,y)
         -- forward pass
         for t=1,opt.seq_length do
@@ -338,6 +337,10 @@ for i = iteration_index, iterations do
         end
     end
 
+    if i % opt.print_every == 0 then
+        print(string.format("%d/%d (epoch %.3f), train_loss = %6.8f, grad/param norm = %6.4e, time/batch = %.4fs", i, iterations, epoch, train_loss, grad_params:norm() / params:norm(), time))
+    end
+
     -- every now and then or on last iteration
     if i % opt.eval_val_every == 0 or i == iterations then
         -- evaluate loss on validation data
@@ -352,15 +355,11 @@ for i = iteration_index, iterations do
         checkpoint.train_losses = train_losses
         checkpoint.val_loss = val_loss
         checkpoint.val_losses = val_losses
-        checkpoint.i = i
+        checkpoint.i = i + 1 -- we already optimized i, restart from i
         checkpoint.epoch = epoch
         checkpoint.vocab = loader.vocab_mapping
         checkpoint.batch_ix = loader.batch_ix
         torch.save(savefile, checkpoint)
-    end
-
-    if i % opt.print_every == 0 then
-        print(string.format("%d/%d (epoch %.3f), train_loss = %6.8f, grad/param norm = %6.4e, time/batch = %.4fs", i, iterations, epoch, train_loss, grad_params:norm() / params:norm(), time))
     end
    
     if i % 10 == 0 then collectgarbage() end
